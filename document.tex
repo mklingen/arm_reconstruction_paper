@@ -2,6 +2,8 @@
 %%There is just one section and two subsections.
 \documentclass{article}
 \usepackage{amsmath}
+\usepackage{float}
+\usepackage{graphicx}
 
 \begin{document}
 
@@ -15,10 +17,10 @@ hand-mounted depth camera.
 
 Consider a robot that has a configuration space $C \subseteq \mathbf{R}^N$.
 Mounted on one of the links of the robot is a depth sensor. The task is, given a
-sequence of (noisy) configurations at each time step $\{q_1, q_2, \ldots,
-q_T\}$, and a sequence of (noisy) sensor readings captured simultaneously
-$\{Z_1, Z_2, \ldots, Z_T\}$, where $Z_T \subseteq \mathbf{R}^3$, reconstruct the
-true dense 3D geometry of the scene.
+sequence of noisy configurations at each time step $\{q_1, q_2, \ldots,
+q_T\}$, and a sequence of noisy sensor readings (point clouds) captured
+simultaneously $\{Z_1, Z_2, \ldots, Z_T\}$, where $Z_i = \{x_1, \ldots, x_N\} \subseteq
+\mathbf{R}^3$, reconstruct the true dense 3D geometry of the scene. 
 
 \subsection{World Representation}
 
@@ -37,14 +39,23 @@ sensor measurements $Z_t$ and the previous TSDF model $D_{t - 1}$. Then, the
 sensor measurements are projected back into the world given $q^*_t$, and the
 usual TSDF update is applied.
 
+\begin{figure}
+	\centering
+	\includegraphics[width=1.0\textwidth]{img/robot_reconstruct.pdf}
+	\caption{A diagram of the robot sensing a surface with a depth sensor. Rays
+	from the depth sensor are shown as orange dotted lines. The point cloud
+	$\{x_1, \ldots, x_M\}$ is used to determine the gradient of the distance field
+	$\nabla D$ at each point.}
+	\label{fig:robot}
+\end{figure}
+
 \subsection{Computing $q^*_t$}
 
 We can compute $q^*_t$ by performing \textbf{gradient descent} in the
-configuration space of the robot. 
-
-Define the \textbf{forward kinematics function} $F(q_t, Z_t) : \mathbf{R}^3 \to
-\mathbf{R}^3$, which merely transforms the point cloud $Z_t$ into the world
-frame, given configuration $q_t \in C$. Call
+configuration space of the robot.  Define the \textbf{forward kinematics
+function} $F(q_t, Z_t) : \mathbf{R}^3 \to \mathbf{R}^3$, which merely
+transforms the point cloud $Z_t$ into the world frame, given configuration $q_t
+\in C$. Call
 
 $$ F_t = F(q_t, z_t) $$
 
@@ -60,12 +71,12 @@ Now, we want to find the partial differential of $h$ with respect to $q_t$:
 \newcommand{\ddq}{\frac{\partial}{\partial q_t}}
 \newcommand{\dxdq}{\frac{\partial x}{\partial q_t}}
 
-\begin{align*} 
+\begin{align} 
 \frac{\partial{h}}{\partial{q_t}} &= \ddq  \sum_{x \inF_t}\left(D_{t-1}(x)\right) ^2 
 \\ &= \sum_{x \inF_t} \ddq \left(D_{t-1}(x)\right) ^2  
 \\ &=\text{Making use of the chain rule? Since x is a function of~} q_t \ldots
 \\ &= 2\sum_{x \in F_t} D_{t-1}(x) \dxdq \nabla D_{t-1}(x)
-\end{align*}
+\end{align}
 
 And, since $\dxdq$ is the change in $x$, a projected sensor point, with respect
 to $q_t$, the configuration of the robot at time $t$, we have (with some
@@ -86,7 +97,7 @@ $$ \frac{\partial{h}}{\partial{q_t}} = 2\sum_{x \in F_t} D_{t-1}(x)
 interpretation: imageine all the points in the point cloud are attached rigidly
 to the robot manipulator on rods. At then end of each rod $x$, apply a force
 $D_{t - 1}(x) \nabla D_{t -1} (x)$. The resulting torque on the robot's joints
-is proportional to $\nabla h(q_t)$ by a factor of 2.
+is proportional to $\nabla h(q_t)$ by a factor of 2 (Fig. \ref{fig:robot}).
 
 \subsubsection{Gradient Descent}
 
